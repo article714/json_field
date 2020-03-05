@@ -1,0 +1,22 @@
+{
+    "name": "Json field test",
+    "version": "12.0.0.0.1",
+    "category": "Field type",
+    "author": "Article714",
+    "license": "LGPL-3",
+    "website": "https://www.article714.org",
+    "summary": """ """,
+    "depends": ["json_field"],
+    "data": [
+        "data/test_json.xml",
+        "security/test_json.xml",
+        "views/actions.xml",
+        "views/menus.xml",
+        "views/test_json_view.xml",
+        "views/templates.xml",
+    ],
+    "qweb": ["static/src/xml/qweb_template.xml"],
+    "installable": True,
+    "images": [],
+    "application": True,
+}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="assets_end" 
+        inherit_id="web.assets_backend">
+        <xpath expr="." 
+            position="inside">
+            <script src="/json_field/static/src/js/json_field.js" 
+                type="text/javascript" />
+            <link href="/json_field/static/src/scss/json_field.scss" 
+                rel="stylesheet" 
+                type="text/scss" />
+        </xpath>
+    </template>
+</odoo>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- List of workflows -->
+    <record id="test_json_action" 
+        model="ir.actions.act_window">
+        <field name="name">test json</field>
+        <field name="target">current</field>
+        <field name="res_model">test_json</field>
+        <field name="limit">100</field>
+        <field name="auto_search" 
+            eval="True" />
+        <field name="view_type">form</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+
+</odoo>

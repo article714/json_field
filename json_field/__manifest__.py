@@ -1,0 +1,15 @@
+{
+    "name": "Json field",
+    "version": "12.0.0.0.1",
+    "category": "Field type",
+    "author": "Article714",
+    "license": "LGPL-3",
+    "website": "https://www.article714.org",
+    "summary": """ """,
+    "depends": ["base", "web"],
+    "data": [],
+    "qweb": [],
+    "installable": True,
+    "images": [],
+    "application": True,
+}

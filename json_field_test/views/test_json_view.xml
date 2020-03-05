@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <!-- test_json form view -->
+    <record id="model_name_view_form" 
+        model="ir.ui.view">
+        <field name="name">test_json.view.form</field>
+        <field name="model">test_json</field>
+        <field name="arch" 
+            type="xml">
+            <form string="">
+                <sheet>
+                    <group>
+                        <field name="json_field" 
+                            widget="json" 
+                            json_schema="format_json_schema" />
+                        <field name="format_json_id" />
+                        <field name="format_json_schema" 
+                            widget="json" />
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

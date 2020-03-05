@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record id="test_1" 
+        model="test_json">
+        <field name="json_field" 
+            eval='{"cle_1": 1, "cle_2": "du text"}' />
+    </record>
+    <record id="test_2" 
+        model="test_json">
+        <field name="json_field" 
+            eval='{"cle_1": 2, "cle_2": "du text"}' />
+    </record>
+    <record id="test_3" 
+        model="test_json">
+        <field name="json_field" 
+            eval='{"cle_1": 3, "cle_2": "encore du text"}' />
+    </record>
+    <record id="test_4" 
+        model="test_json">
+        <field name="json_field" 
+            eval='{"cle_1": 4, "cle_2": "encore du text"}' />
+    </record>
+    <record id="test_5" 
+        model="test_json">
+        <field name="json_field" 
+            eval='{"cle_1": 5, "cle_2": "et un peu plus de text"}' />
+    </record>
+
+    <record id="test_format_1" 
+        model="test_format_json">
+        <field name="schema" 
+            eval='{
+    "type": "object",
+    "properties": {"price": {"type": "number"}, "name": {"type": "string"},},
+}' />
+    </record>
+
+    <record id="test_format_2" 
+        model="test_format_json">
+        <field name="schema" 
+            eval='{
+    "type": "object",
+    "properties": {"Toto": {"type": "number"}, "titi": {"type": "string"},},
+}' />
+    </record>
+</odoo>

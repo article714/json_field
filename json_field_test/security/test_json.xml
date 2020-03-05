@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record id="access_test_json_base_user" 
+        model="ir.model.access">
+        <field name="name">access.test.json.base_user</field>
+        <field name="model_id" 
+            ref="model_test_json" />
+        <field name="group_id" 
+            eval="ref('base.default_user')" />
+        <field name="perm_read">1</field>
+        <field name="perm_write">1</field>
+        <field name="perm_create">1</field>
+        <field name="perm_unlink">1</field>
+    </record>
+
+    <record id="access_test_format_json_base_user" 
+        model="ir.model.access">
+        <field name="name">access.test.format.json.base_user</field>
+        <field name="model_id" 
+            ref="model_test_format_json" />
+        <field name="group_id" 
+            eval="ref('base.default_user')" />
+        <field name="perm_read">1</field>
+        <field name="perm_write">1</field>
+        <field name="perm_create">1</field>
+        <field name="perm_unlink">1</field>
+    </record>
+</odoo>

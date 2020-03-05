@@ -1,0 +1,24 @@
+.json_key_button,
+.json_add_row {
+  cursor: pointer;
+  margin-left: 5px;
+  margin-right: 5px;
+  color: #7c7bad;
+}
+.json_key_button {
+  display: none;
+}
+.json_key_button:hover,
+.json_add_row:hover {
+  display: inline-block;
+  color: #65639e;
+  transform: scale(1.5);
+}
+
+.json_key:hover > .json_key_button {
+  display: inline-block;
+}
+
+.json_table {
+  cursor: auto;
+}

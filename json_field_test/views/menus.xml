@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Base menu -->
+    <menuitem id="test_json_base_menu" 
+        name="Test json" 
+        sequence="10" />
+
+    <menuitem id="test_json_menu" 
+        parent="test_json_base_menu" 
+        name="Test json" 
+        sequence="30" 
+        action="test_json_action" />
+
+</odoo>
