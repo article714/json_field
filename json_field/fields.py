@@ -1,7 +1,5 @@
-from odoo import fields
 import json
-import logging
-from operator import attrgetter
+from odoo import fields
 
 
 class Jsonb(fields.Field):
@@ -10,4 +8,3 @@ class Jsonb(fields.Field):
 
     def convert_to_column(self, value, record, values=None, validate=True):
         return json.dumps(value)
-

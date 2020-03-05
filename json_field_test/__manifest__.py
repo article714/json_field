@@ -13,7 +13,6 @@
         "views/actions.xml",
         "views/menus.xml",
         "views/test_json_view.xml",
-        "views/templates.xml",
     ],
     "qweb": ["static/src/xml/qweb_template.xml"],
     "installable": True,

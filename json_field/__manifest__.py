@@ -7,7 +7,7 @@
     "website": "https://www.article714.org",
     "summary": """ """,
     "depends": ["base", "web"],
-    "data": [],
+    "data": ["views/templates.xml",],
     "qweb": [],
     "installable": True,
     "images": [],

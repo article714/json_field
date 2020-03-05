@@ -4,8 +4,6 @@ odoo.define('json_field_widget', function (require) {
     var fieldRegistry = require('web.field_registry');
     var core = require('web.core');
 
-    var qweb = core.qweb;
-
     var objectGetPath = function (obj, path) {
         if (path == []) {
             return obj;
@@ -58,12 +56,12 @@ odoo.define('json_field_widget', function (require) {
             }
         },
 
-        _renderEdit: async function () {
+        _renderEdit: function () {
             this._updateSchema();
             this._renderTable(true);
         },
 
-        _renderReadonly: async function () {
+        _renderReadonly: function () {
             this._updateSchema();
             this._renderTable(false);
         },

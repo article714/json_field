@@ -1,7 +1,6 @@
 from odoo.addons.json_field import fields, models
 from odoo import fields as ofields
 from odoo import api
-import logging
 
 
 class TestJson(models.JsonModels):
