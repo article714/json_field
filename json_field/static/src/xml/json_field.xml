@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates>
+    <t t-name="JsonField">
+        <table class="o_list_view table table-sm table-hover table-striped json_table">
+            <thead>
+                <tr>
+                    <th class="o_column">
+                        <span>Key</span>
+                        <i t-if="edit" 
+                            class="fa fa-plus json_add_row" />
+                    </th>
+                    <th class="o_column">Value</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td />
+                    <td />
+                </tr>
+            </tfoot>
+        </table>
+    </t>
+
+    <t t-name="JsonFieldRow">
+        <tr>
+            <td class="o_data_cell json_key" 
+                t-att-style="'padding-left: ' + deep_level * 30 + 'px'" 
+                t-att-path="path">
+                <t t-call="JsonFieldRowKeyCell" />
+            </td>
+            <td class="o_data_cell json_value">
+                <t t-if="!is_object">
+                    <t t-if="edit">
+                        <input class="o_input" 
+                            t-att-value="value" 
+                            t-att-type="type" 
+                            t-att-path="path" />
+                    </t>
+                    <t t-else="" 
+                        t-esc="value" />
+                </t>
+            </td>
+        </tr>
+    </t>
+
+
+    <t t-name="JsonFieldRowKeyCell">
+        <t t-if="edit_key">
+            <input class="o_input input_json_edit_key" 
+                type="text" 
+                t-att-value="key" 
+                t-att-path="path" />
+        </t>
+        <t t-else="">
+            <t t-esc="key" />
+            <t t-if="addEditButton">
+                <i class='fa fa-pencil json_edit_key json_key_button' 
+                    t-att-path="path" />
+                <i class='fa fa-plus json_add_row json_key_button' 
+                    t-att-path="path" />
+                <i class='fa fa-trash-o json_delete_key json_key_button' 
+                    t-att-path="path" />
+            </t>
+        </t>
+    </t>
+</templates>

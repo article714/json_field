@@ -1,53 +1,104 @@
 odoo.define('json_field_widget', function (require) {
     "use strict";
-    var AbstractField = require('web.AbstractField');
-    var fieldRegistry = require('web.field_registry');
-    var core = require('web.core');
+    const AbstractField = require('web.AbstractField');
+    const fieldRegistry = require('web.field_registry');
+    const core = require('web.core');
+    const qweb = core.qweb
 
-    var objectGetPath = function (obj, path) {
+    /**
+     * Get recursevely throug object
+     *
+     * @param {object} obj
+     * @param {array} path
+     */
+    const objectGetPath = function (obj, path) {
         if (path == []) {
             return obj;
         }
-        for (var i = 0, len = path.length; i < len; i++) {
+        for (let i = 0, len = path.length; i < len; i++) {
             obj = obj[path[i]];
             if (obj == undefined) {
-
                 return obj;
             }
         };
         return obj;
     };
 
-    var string_to_path = function (string) {
-        return string.split('.')
+    /**
+     * Convert a double dot separated string to array path
+     * and remove escaped dot from item.
+     * Inverse method: path_to_string
+     *
+     * @param {string} string
+     */
+    const string_to_path = function (string) {
+        const arr_path = string.split('..')
+        for (let i = 0; i < arr_path.length; i++) {
+            arr_path[i] = arr_path[i].replace(/\/\./g, '.');
+        }
+        return arr_path
     };
 
-    var path_to_string = function (path) {
-        return path.join('.')
+    /**
+     * Convert path to string double dot separated
+     * and escape dot from item.
+     * Inverse method: string_to_path
+     *
+     * @param {array} path
+     */
+    const path_to_string = function (path) {
+        const arr_string = [];
+        for (let i = 0; i < path.length; i++) {
+            arr_string.push(path[i].replace(/\./g, '/.'));
+
+        }
+        return arr_string.join('..')
     };
 
-    var jsonField = AbstractField.extend({
+    /**
+     * JsonField widget
+     */
+    const jsonField = AbstractField.extend({
         className: 'o_json_list',
         tagName: 'div',
         supportedFieldTypes: ['jsonb'],
         events: _.extend({}, AbstractField.prototype.events, {
             'change .json_value': '_valueChanged',
             'change .json_key': '_keyChanged',
-            'click .json_add_row': '_addNewRow',
+            'click .json_add_row': '_addKey',
             'click .json_edit_key': '_editKey',
             'click .json_delete_key': '_deleteKey',
-            'focusout .input_json_edit_key': '_unEditKey'
+            'focusout .input_json_edit_key': '_unEditKey',
         }),
 
-
+        /** Initialized widget and some class value */
         init: function () {
             this._super.apply(this, arguments);
-            window.a = arguments;
 
-            this.resetOnAnyFieldChange = true;
+            // If there json_schema attribut is set, we set resetOnAnyFieldChange
+            // to catch change on json_schema field
+            if (this.attrs.json_schema) {
+                this.resetOnAnyFieldChange = true;
+            }
+
             this.savedValue = '';
         },
 
+        _renderEdit: function () {
+            this._renderTable(true);
+        },
+
+        _renderReadonly: function () {
+            this._renderTable(false);
+        },
+
+        _parseValue: function (value) {
+            return value;
+        },
+
+        /**
+         * Update this.schema if json_schema attribut is set on field.
+         */
         _updateSchema: function () {
             if (this.attrs.json_schema) {
                 this.schema = this.recordData[this.attrs.json_schema];
@@ -56,63 +107,40 @@ odoo.define('json_field_widget', function (require) {
             }
         },
 
-        _renderEdit: function () {
-            this._updateSchema();
-            this._renderTable(true);
-        },
-
-        _renderReadonly: function () {
-            this._updateSchema();
-            this._renderTable(false);
-        },
-
+        /**
+         * Init rendering
+         *
+         * @param {boolean} edit Edit mode
+         */
         _renderTable: function (edit) {
+            this._updateSchema();
+
             this.$el.empty();
 
-            const $table = $('<table>',
-                { 'class': ' o_list_view table table-sm table-hover table-striped json_table' });
-            this.$el.append($table);
+            this.$el.append(qweb.render('JsonField', { edit: edit }));
 
-            // Add Header
-            const $thead = $('<thead>');
-            $table.append($thead);
-            const $tr_head = $('<tr>');
-            $thead.append($tr_head);
-            const $th_key = $('<th>', { class: 'o_column', text: 'Key' });
-            $tr_head.append(
-                $th_key,
-                $('<th>', { class: 'o_column', text: 'Value' }));
-
-            if (edit & this.schema == false) {
-                const $add_row_btn = $('<i>', { text: '', class: 'fa fa-plus json_add_row' })
-                $th_key.append($add_row_btn)
-            }
-
-            // Add row
-            if (edit) {
-                this._renderRowEdit($table)
-            } else {
-                this._renderRowReadonly($table)
-            }
-
-            // Add footer
-            const $tfoot = $('<tfoot>');
-            $table.append($tfoot);
-            const $trfoot = $('<tr>');
-            $tfoot.append($trfoot);
-            $trfoot.append($('<td>'), $('<td>'));
+            this._renderRow(edit)
         },
 
-        _renderRowReadonly: function ($table, path = [], deep_level = 0) {
-            window.toto = this;
-            var $tr = $('<tr>');
-            var keys = [];
-            var local_path = [];
-            var is_node_object = true;
-            var node;
-            var $td_value;
-            var value_local_path;
+        /**
+         * Render table row
+         *
+         * @param {boolean} edit Edit mode
+         * @param {array} path Current path
+         * @param {int} deep_level Nesting level
+         */
+        _renderRow: function (edit, path = [], deep_level = 0) {
+            let keys;
+            let path_to_value;
+            const $tbody = this.$el.find('tbody')
 
+            const param = {
+                'deep_level': deep_level,
+                'addEditButton': edit & this.schema == false,
+                'edit': edit
+            };
+
+            // If schema is set, read keys from schema else direct read from value
             if (this.schema) {
                 path.push('properties');
                 keys = Object.keys(objectGetPath(this.schema, path));
@@ -122,127 +150,40 @@ odoo.define('json_field_widget', function (require) {
 
             keys.sort();
             for (const key of keys) {
-                local_path = Object.assign([], path)
-                local_path.push(key)
+                // Add key to path
+                path.push(key);
 
                 if (this.schema) {
-                    node = objectGetPath(this.schema, local_path);
-                    is_node_object = node.type == 'object';
-                    value_local_path = [];
-                    for (let i = 1; i < local_path.length; i = i + 2) {
-                        value_local_path.push(local_path[i]);
+                    param['is_object'] = objectGetPath(this.schema, path).type == 'object';
+
+                    // To compute path_to_value, we take 1 out of 2 items from
+                    // path to remove all "properties" items to match with value
+                    // stucture
+                    path_to_value = [];
+                    for (let i = 1; i < path.length; i = i + 2) {
+                        path_to_value.push(path[i]);
 
                     }
+                    param['path'] = path_to_string(path_to_value);
                 } else {
-                    node = objectGetPath(this.value, local_path);
-                    is_node_object = typeof (node) == 'object';
-                    value_local_path = local_path;
+                    param['is_object'] = typeof (objectGetPath(this.value, path)) == 'object';
+                    param['path'] = path_to_string(path);
+                    path_to_value = path;
                 }
 
-                $tr = $('<tr>');
-                $table.append($tr);
-                $td_value = $('<td>', { class: 'o_data_cell json_value' });
-                if (!is_node_object) {
-                    $td_value.append(objectGetPath(this.value, value_local_path))
-                }
-                $tr.append(
-                    $('<td>', {
-                        class: 'o_data_cell json_key',
-                        style: "padding-left: " + deep_level * 30 + "px",
-                        text: key
-                    }),
-                    $td_value)
+                param['key'] = key;
+                param['type'] = this._getInputType(path);
+                param['value'] = objectGetPath(this.value, path_to_value);
 
+                $tbody.append(qweb.render('JsonFieldRow', param));
 
-                if (is_node_object) {
-                    this._renderRowReadonly($table, local_path, deep_level + 1)
-                }
-            }
-        },
-
-        _renderRowEdit: function ($table, path = [], deep_level = 0) {
-            var $td_value;
-            var $td_key;
-            var $tr = $('<tr>');
-            var keys = [];
-            var local_path = [];
-            var local_path_string;
-            var is_node_object = true;
-            var node;
-            var value_local_path;
-
-            if (this.schema) {
-                path.push('properties');
-                keys = Object.keys(objectGetPath(this.schema, path));
-            } else {
-                keys = Object.keys(objectGetPath(this.value, path));
-            }
-
-            keys.sort();
-            for (const key of keys) {
-                local_path = Object.assign([], path)
-                local_path.push(key)
-
-                if (this.schema) {
-                    node = objectGetPath(this.schema, local_path);
-                    is_node_object = node.type == 'object';
-                    value_local_path = [];
-                    for (let i = 1; i < local_path.length; i = i + 2) {
-                        value_local_path.push(local_path[i]);
-
-                    }
-                    local_path_string = path_to_string(value_local_path);
-                } else {
-                    node = objectGetPath(this.value, local_path);
-                    is_node_object = typeof (node) == 'object';
-                    local_path_string = path_to_string(local_path);
-                    value_local_path = local_path;
+                // If current row is an object, we render next level
+                if (param['is_object']) {
+                    this._renderRow(edit, path, deep_level + 1);
                 }
 
-
-                $tr = $('<tr>');
-                $table.append($tr);
-
-                $td_key = $('<td>', {
-                    class: 'o_data_cell json_key',
-                    style: "padding-left: " + deep_level * 30 + "px",
-                    text: key,
-                    key: local_path_string
-                });
-
-                if (this.schema == false) {
-                    $td_key.append(
-                        $('<i>', {
-                            class: 'fa fa-pencil json_edit_key json_key_button',
-                            text: '',
-                            key: local_path_string
-                        }),
-                        $('<i>', {
-                            class: 'fa fa-plus json_add_row json_key_button',
-                            text: '',
-                            key: local_path_string
-                        }),
-                        $('<i>', {
-                            class: 'fa fa-trash-o json_delete_key json_key_button',
-                            text: '',
-                            key: local_path_string
-                        }));
-                }
-
-                $td_value = $('<td>', { class: 'o_data_cell json_value' });
-                if (!is_node_object) {
-                    $td_value.append($('<input>', {
-                        class: 'o_input',
-                        type: this._getInputType(local_path),
-                        value: objectGetPath(this.value, value_local_path),
-                        key: local_path_string
-                    }));
-                }
-                $tr.append($td_key, $td_value);
-
-                if (is_node_object) {
-                    this._renderRowEdit($table, local_path, deep_level + 1)
-                }
+                // Clean path from key
+                path.pop()
             }
         },
 
@@ -254,138 +195,180 @@ odoo.define('json_field_widget', function (require) {
             }
         },
 
-        _addNewRow: function (event) {
-            var local_path_string = event.target.getAttribute('key');
-            var local_path = [];
-            if (local_path_string != null) {
-                local_path = string_to_path(local_path_string);
-            }
+        /**
+         * Call by click on .json_add_row
+         * Add an empty key and edit it
+         *
+         * @param {Event} event
+         */
+        _addKey: function (event) {
+            const path_string = event.target.getAttribute('path');
 
-            var newJson = Object.assign({}, this.value);
-            var local_json = objectGetPath(newJson, local_path);
+            // path_string is null if we add a key on root element
+            const path = (path_string != null ? string_to_path(path_string) : []);
 
-            if (typeof (local_json) == 'object') {
-                this.savedValue = Object.assign({}, local_json);
-                local_json[''] = '';
-                local_path.push('')
+            const newJson = Object.assign({}, this.value);
+            let sub_json = objectGetPath(newJson, path);
+
+            // If sub_json is already an object, directly add empty key
+            // else convert current sub_json to object
+            if (typeof (sub_json) == 'object') {
+                this.savedValue = Object.assign({}, sub_json);
+                sub_json[''] = '';
+                path.push('')
             } else {
-                const key = local_path.pop();
-                local_json = objectGetPath(newJson, local_path);
-                this.savedValue = local_json[key];
-                local_json[key] = { '': '' };
-                local_path.push(key, '');
+                let key = path.pop();
+                sub_json = objectGetPath(newJson, path);
+                this.savedValue = sub_json[key];
+                sub_json[key] = { '': '' };
+                path.push(key, '');
             }
+
             this._setValue(newJson);
-            const $button = $("i[key='" + path_to_string(local_path) + "']");
-            $button.click()
+
+            // Immediatly start editing key
+            this._startEditKey(path_to_string(path));
         },
 
+        /**
+         * Call by click on .json_edit_key button
+         *
+         * @param {Event} event
+         */
         _editKey: function (event) {
-            const local_path_string = event.target.getAttribute('key');
-            const $td_key = $("td[key='" + local_path_string + "']");
-            $td_key.empty()
-            const $input = $('<input>', {
-                class: 'o_input input_json_edit_key',
-                type: 'text',
-                value: string_to_path(local_path_string).pop(),
-                key: local_path_string
-            });
-            $td_key.append($input);
-            $input.focus().select()
+            this._startEditKey(event.target.getAttribute('path'));
         },
 
-        _deleteKey: function (event) {
-            const key = event.target.getAttribute('key');
-            var newJson = Object.assign({}, this.value);
-            delete newJson[key];
-            this._setValue(newJson);
+        /**
+         * Redraw key cell with an input to edit key
+         * @param {string} path_string Path of key to edit
+         */
+        _startEditKey: function (path_string) {
+            const $td_key = this.$el.find("td[path='" + path_string + "']");
+
+            $td_key.attr("editing", true);
+            $td_key.empty();
+            $td_key.append(qweb.render('JsonFieldRowKeyCell', {
+                key: string_to_path(path_string).pop(),
+                edit_key: true,
+                path: path_string
+            }));
+
+            // Select value in input
+            $td_key.children()[0].select()
         },
 
+        /**
+         * Call by focus out of .input_json_edit_key without any change of key
+         *
+         * @param {Event} event
+         */
         _unEditKey: function (event) {
-            const local_path_string = event.target.getAttribute('key');
-            var local_path = string_to_path(local_path_string);
-            var key = local_path.pop();
+            const local_path_string = event.target.getAttribute('path');
+            const local_path = string_to_path(local_path_string);
+            let key = local_path.pop();
+
+            // if key is not empty, it means that we were editing an already
+            // existing key, so we just redraw key cell.
             if (key != '') {
-                const $td_key = $("td[key='" + local_path_string + "']");
+                const $td_key = this.$el.find("td[path='" + local_path_string + "']");
                 $td_key.empty()
-                $td_key.append(
-                    string_to_path(local_path_string).pop(),
-                    $('<i>', {
-                        class: 'fa fa-pencil json_edit_key json_key_button',
-                        text: '',
-                        key: local_path_string
-                    }),
-                    $('<i>', {
-                        class: 'fa fa-plus json_add_row json_key_button',
-                        text: '',
-                        key: local_path_string
-                    }),
-                    $('<i>', {
-                        class: 'fa fa-trash-o json_delete_key json_key_button',
-                        text: '',
-                        key: local_path_string
-                    }));
+                $td_key.append(qweb.render('JsonFieldRowKeyCell', {
+                    key: string_to_path(local_path_string).pop(),
+                    addEditButton: true,
+                    path: local_path_string
+                }));
             } else {
-                var newJson = Object.assign({}, this.value);
+                // Else if key is empty, it means that we leave edit key of a new key
+                // without giving it a value, so we delete it
+                let newJson = Object.assign({}, this.value);
                 key = local_path.pop();
-                if (key != undefined) {
-                    objectGetPath(newJson, local_path)[key] = this.savedValue;
-                } else {
+
+                // If key is undefined, it means that we were adding a key on root
+                // element and so savedValue contains root element
+                if (key == undefined) {
                     newJson = this.savedValue;
+                } else {
+                    objectGetPath(newJson, local_path)[key] = this.savedValue;
                 }
                 this._setValue(newJson);
             }
         },
 
-        _valueChanged: function (event) {
-            const local_path = string_to_path(event.target.getAttribute('key'));
-            const key = local_path.pop();
-            var local_json;
-
-            var newJson = Object.assign({}, this.value);
-            local_json = newJson;
-            for (var i = 0, len = local_path.length; i < len; i++) {
-                if (local_json[local_path[i]] == undefined) {
-                    local_json[local_path[i]] = {};
-                }
-                local_json = local_json[local_path[i]]
-            }
-
-            console.log("TTTTTTTTTTTTTTTTTT " + JSON.stringify(newJson));
-            local_json[key] = event.target.value;
-            console.log("JJJJJJJJJJJJJ " + JSON.stringify(newJson));
-            this._setValue(newJson);
-        },
-
+        /**
+         * Call by change on .input_json_edit_key with key change
+         *
+         * @param {Event} event
+         */
         _keyChanged: function (event) {
-            const local_path_string = event.target.getAttribute('key');
+            const path_string = event.target.getAttribute('path');
             const newKey = event.target.value;
 
-            var local_path = string_to_path(local_path_string);
-            const key = local_path.pop()
-            var new_local_path = string_to_path(local_path_string);
-            new_local_path.pop();
-            new_local_path.push(newKey);
-
+            // Return if newKey is empty
             if (newKey == '') {
-                return;
-            } else if (objectGetPath(this.value, new_local_path) != undefined) {
                 return;
             }
 
-            var newJson = Object.assign({}, this.value);
-            var local_json = objectGetPath(newJson, local_path);
-            local_json[newKey] = local_json[key];
-            delete local_json[key];
+            const new_path = string_to_path(path_string);
+            new_path.pop();
+            new_path.push(newKey);
+
+            // Return if new_path already exists
+            if (objectGetPath(this.value, new_path) != undefined) {
+                return;
+            }
+
+            const path = string_to_path(path_string);
+            const oldKey = path.pop()
+            const newJson = Object.assign({}, this.value);
+            const sub_json = objectGetPath(newJson, path);
+            sub_json[newKey] = sub_json[oldKey];
+            delete sub_json[oldKey];
             this._setValue(newJson);
         },
 
-        _parseValue: function (value) {
-            return value;
+        /**
+         * Call by click on .json_delete_key button
+         *
+         * @param {Event} event
+         */
+        _deleteKey: function (event) {
+            const path_string = event.target.getAttribute('path');
+            const path = string_to_path(path_string);
+            const key = path.pop();
+            const newJson = Object.assign({}, this.value);
+            delete objectGetPath(newJson, path)[key];
+            this._setValue(newJson);
         },
+
+        /**
+         * Call by change on .json_value
+         * @param {Event} event
+         */
+        _valueChanged: function (event) {
+            const path = string_to_path(event.target.getAttribute('path'));
+            const key = path.pop();
+            let sub_json;
+
+            const newJson = Object.assign({}, this.value);
+            sub_json = newJson;
+
+            // Loop recurcively over sub_json to create all needed path level
+            for (let i = 0, len = path.length; i < len; i++) {
+                if (sub_json[path[i]] == undefined) {
+                    sub_json[path[i]] = {};
+                }
+                sub_json = sub_json[path[i]];
+            }
+
+            sub_json[key] = event.target.value;
+
+            this._setValue(newJson);
+        },
+
     });
 
     fieldRegistry.add('json', jsonField);
 
     return { jsonField: jsonField, };
-}); // closing 'my_field_widget' namespace
+});

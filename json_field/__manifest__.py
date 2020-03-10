@@ -8,7 +8,7 @@
     "summary": """ """,
     "depends": ["base", "web"],
     "data": ["views/templates.xml"],
-    "qweb": [],
+    "qweb": ["static/src/xml/json_field.xml"],
     "installable": True,
     "images": [],
     "application": True,
