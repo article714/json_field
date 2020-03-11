@@ -1,9 +1,9 @@
 odoo.define('json_field_widget', function (require) {
     "use strict";
     const AbstractField = require('web.AbstractField');
-    const fieldRegistry = require('web.field_registry');
-    const core = require('web.core');
-    const qweb = core.qweb
+    const field_registry = require('web.field_registry');
+    const qweb = require('web.core').qweb;
+    const time = require('web.time');
 
     /**
      * Get recursevely throug object
@@ -84,6 +84,11 @@ odoo.define('json_field_widget', function (require) {
             this.savedValue = '';
         },
 
+        // ========================================================
+        // Inherited method
+        // ========================================================
+
+
         _renderEdit: function () {
             this._renderTable(true);
         },
@@ -96,6 +101,17 @@ odoo.define('json_field_widget', function (require) {
             return value;
         },
 
+        isValid: function () {
+            if (this.ajv_validator != false) {
+                return this.ajv_validator(this.value)
+            } else {
+                return true;
+            }
+        },
+        // ========================================================
+        // Own methods
+        // ========================================================
+
         /**
          * Update this.schema if json_schema attribut is set on field.
          */
@@ -105,7 +121,19 @@ odoo.define('json_field_widget', function (require) {
             } else {
                 this.schema = false;
             }
+
+            if (this.schema) {
+                this.ajv_validator = new Ajv().compile(this.schema)
+                window.a = this.ajv_validator;
+            } else {
+                this.ajv_validator = false;
+            }
+
         },
+
+        // -------------------------------------------------------
+        // Rendering
+        // -------------------------------------------------------
 
         /**
          * Init rendering
@@ -117,7 +145,7 @@ odoo.define('json_field_widget', function (require) {
 
             this.$el.empty();
 
-            this.$el.append(qweb.render('JsonField', { edit: edit }));
+            this.$el.append(qweb.render('JsonField', { addEditButton: edit && this.schema == false }));
 
             this._renderRow(edit)
         },
@@ -131,19 +159,20 @@ odoo.define('json_field_widget', function (require) {
          */
         _renderRow: function (edit, path = [], deep_level = 0) {
             let keys;
-            let path_to_value;
+            let row_schema = {};
             const $tbody = this.$el.find('tbody')
 
             const param = {
                 'deep_level': deep_level,
-                'addEditButton': edit & this.schema == false,
+                'addEditButton': edit && this.schema == false,
                 'edit': edit
             };
 
             // If schema is set, read keys from schema else direct read from value
             if (this.schema) {
+                row_schema = objectGetPath(this.schema, path);
                 path.push('properties');
-                keys = Object.keys(objectGetPath(this.schema, path));
+                keys = Object.keys(row_schema.properties);
             } else {
                 keys = Object.keys(objectGetPath(this.value, path));
             }
@@ -159,21 +188,22 @@ odoo.define('json_field_widget', function (require) {
                     // To compute path_to_value, we take 1 out of 2 items from
                     // path to remove all "properties" items to match with value
                     // stucture
-                    path_to_value = [];
+                    let path_to_value = [];
                     for (let i = 1; i < path.length; i = i + 2) {
                         path_to_value.push(path[i]);
 
                     }
                     param['path'] = path_to_string(path_to_value);
+                    param['value'] = objectGetPath(this.value, path_to_value);
                 } else {
-                    param['is_object'] = typeof (objectGetPath(this.value, path)) == 'object';
+                    param['value'] = objectGetPath(this.value, path)
+                    param['is_object'] = (typeof (param.value) == 'object' && !Array.isArray(param.value));
                     param['path'] = path_to_string(path);
-                    path_to_value = path;
                 }
 
                 param['key'] = key;
-                param['type'] = this._getInputType(path);
-                param['value'] = objectGetPath(this.value, path_to_value);
+
+                this._getValueParam(row_schema, param);
 
                 $tbody.append(qweb.render('JsonFieldRow', param));
 
@@ -187,13 +217,58 @@ odoo.define('json_field_widget', function (require) {
             }
         },
 
-        _getInputType: function (path) {
+        /**
+         * Complete param with formated value if needed and input param
+         *
+         * @param {object} row_schema
+         * @param {object} param
+         */
+        _getValueParam: function (row_schema, param) {
             if (this.schema) {
-                return objectGetPath(this.schema, path).type;
+                let property = row_schema.properties[param.key];
+                const required_properties = row_schema.required;
+                if (required_properties) {
+                    param['required'] = required_properties.includes(param.key);
+                }
+                switch (property.type) {
+                    case 'string':
+                        param["json_type"] = "text";
+                        switch (property.format) {
+                            case "date":
+                                param["input_type"] = "date";
+                                if (!param.edit && param.value != undefined) {
+                                    // Convert date to local format
+                                    let date = moment(param['value']);
+                                    if (date._isValid) {
+                                        param['value'] = date.format(time.getLangDateFormat());
+                                    }
+                                }
+                                break;
+                            default:
+                                param["input_type"] = "text";
+                        }
+                        break;
+                    case 'number':
+                        param["json_type"] = "number";
+                        param["input_type"] = "number";
+                        break;
+                    case 'integer':
+                        param["json_type"] = "number";
+                        param["input_type"] = "integer";
+                        break;
+                    default:
+                        param["json_type"] = "text";
+                        param["input_type"] = "text";
+                        break;
+                }
             } else {
-                return 'text';
+                param['type'] = 'text';
             }
         },
+
+        // -------------------------------------------------------
+        // Edit key
+        // -------------------------------------------------------
 
         /**
          * Call by click on .json_add_row
@@ -341,12 +416,17 @@ odoo.define('json_field_widget', function (require) {
             this._setValue(newJson);
         },
 
+        // -------------------------------------------------------
+        // Edit value
+        // -------------------------------------------------------
+
         /**
          * Call by change on .json_value
          * @param {Event} event
          */
         _valueChanged: function (event) {
             const path = string_to_path(event.target.getAttribute('path'));
+            const json_type = event.target.getAttribute('json-type');
             const key = path.pop();
             let sub_json;
 
@@ -361,14 +441,26 @@ odoo.define('json_field_widget', function (require) {
                 sub_json = sub_json[path[i]];
             }
 
-            sub_json[key] = event.target.value;
+            let value = event.target.value;
+            window.r = value;
+            // Cast value if json_type is defined
+            switch (json_type) {
+                case "number":
+                    if (value != '') {
+                        value = Number(value);
+                    } else {
+                        value = null;
+                    }
+                    break;
+            }
+            sub_json[key] = value;
 
             this._setValue(newJson);
         },
 
     });
 
-    fieldRegistry.add('json', jsonField);
+    field_registry.add('json', jsonField);
 
     return { jsonField: jsonField, };
 });

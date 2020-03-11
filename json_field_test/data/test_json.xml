@@ -31,7 +31,8 @@
         <field name="schema" 
             eval='{
     "type": "object",
-    "properties": {"price": {"type": "number"}, "name": {"type": "string"},},
+    "required": ["date", "price"],
+    "properties": {"price": {"type": "number"}, "name": {"type": "string"}, "date": {"type": "string", "format": "date"}},
 }' />
     </record>
 

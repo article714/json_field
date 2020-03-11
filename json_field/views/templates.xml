@@ -6,6 +6,8 @@
             position="inside">
             <script src="/json_field/static/src/js/json_field.js" 
                 type="text/javascript" />
+            <script src="/json_field/static/lib/ajv.min.js" 
+                type="text/javascript" />
             <link href="/json_field/static/src/scss/json_field.scss" 
                 rel="stylesheet" 
                 type="text/scss" />

@@ -6,7 +6,7 @@
                 <tr>
                     <th class="o_column">
                         <span>Key</span>
-                        <i t-if="edit" 
+                        <i t-if="addEditButton" 
                             class="fa fa-plus json_add_row" />
                     </th>
                     <th class="o_column">Value</th>
@@ -33,9 +33,10 @@
             <td class="o_data_cell json_value">
                 <t t-if="!is_object">
                     <t t-if="edit">
-                        <input class="o_input" 
+                        <input t-att-class="'o_input' + (required ? ' o_required_modifier' : '')" 
                             t-att-value="value" 
-                            t-att-type="type" 
+                            t-att-type="input_type" 
+                            t-att-json-type="json_type" 
                             t-att-path="path" />
                     </t>
                     <t t-else="" 
