@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates>
+    <t t-name="JsonFieldErrors">
+        <div id="jsonfielderror">
+            <p t-foreach="errors" 
+                t-as="error">
+                <p class="text-danger">
+                    <span class="text-danger fa fa-exclamation-triangle" />
+                    <b>
+                        <t t-esc="error.dataPath.replace('.', '') + ' - ' + error.message" />
+                    </b>
+                </p>
+            </p>
+        </div>
+    </t>
+
     <t t-name="JsonField">
         <table class="o_list_view table table-sm table-hover table-striped json_table">
             <thead>

@@ -30,10 +30,21 @@
         model="test_format_json">
         <field name="schema" 
             eval='{
-    "type": "object",
-    "required": ["date", "price"],
-    "properties": {"price": {"type": "number"}, "name": {"type": "string"}, "date": {"type": "string", "format": "date"}},
-}' />
+                "type": "object",
+                "required": ["date", "price"],
+                "properties": {
+                    "price": {"type": "number"},
+                    "name": {"type": ["string", "null"]},
+                    "date": {"type": "string", "format": "date"},
+                    "dimensions": {
+                        "type": "object",
+                        "properties": {
+                            "width": {"type": ["number", "null"]},
+                            "height": {"type": ["number", "null"]}
+                        }
+                    }
+                }
+            }' />
     </record>
 
     <record id="test_format_2" 

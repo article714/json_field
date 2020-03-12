@@ -10,17 +10,27 @@ odoo.define('json_field_widget', function (require) {
      *
      * @param {object} obj
      * @param {array} path
+     * @param {boolean} build if true add intermediate object if undefiend
      */
-    const objectGetPath = function (obj, path) {
+    const objectGetPath = function (obj, path, build = false) {
         if (path == []) {
             return obj;
         }
         for (let i = 0, len = path.length; i < len; i++) {
-            obj = obj[path[i]];
-            if (obj == undefined) {
-                return obj;
+            if (obj[path[i]] == undefined) {
+                if (build) {
+                    if (i != len - 1) {
+                        obj[path[i]] = {};
+                    } else {
+                        obj[path[i]] = null;
+                    }
+                } else {
+                    return undefined;
+                }
             }
-        };
+            obj = obj[path[i]];
+        }
+
         return obj;
     };
 
@@ -103,7 +113,11 @@ odoo.define('json_field_widget', function (require) {
 
         isValid: function () {
             if (this.ajv_validator != false) {
-                return this.ajv_validator(this.value)
+                let valid = this.ajv_validator(this.value);
+                if (!valid) {
+                    this._renderError();
+                }
+                return valid;
             } else {
                 return true;
             }
@@ -123,8 +137,7 @@ odoo.define('json_field_widget', function (require) {
             }
 
             if (this.schema) {
-                this.ajv_validator = new Ajv().compile(this.schema)
-                window.a = this.ajv_validator;
+                this.ajv_validator = new Ajv({ allErrors: true }).compile(this.schema)
             } else {
                 this.ajv_validator = false;
             }
@@ -145,9 +158,23 @@ odoo.define('json_field_widget', function (require) {
 
             this.$el.empty();
 
+            this._renderError()
+
             this.$el.append(qweb.render('JsonField', { addEditButton: edit && this.schema == false }));
 
             this._renderRow(edit)
+        },
+
+        /**
+         * Render error div if needed
+         */
+        _renderError: function () {
+
+            this.$el.find("#jsonfielderror").remove()
+
+            if (this.schema && this.ajv_validator.errors) {
+                this.$el.prepend(qweb.render('JsonFieldErrors', { errors: this.ajv_validator.errors }));
+            }
         },
 
         /**
@@ -194,7 +221,7 @@ odoo.define('json_field_widget', function (require) {
 
                     }
                     param['path'] = path_to_string(path_to_value);
-                    param['value'] = objectGetPath(this.value, path_to_value);
+                    param['value'] = objectGetPath(this.value, path_to_value, true);
                 } else {
                     param['value'] = objectGetPath(this.value, path)
                     param['is_object'] = (typeof (param.value) == 'object' && !Array.isArray(param.value));
@@ -210,6 +237,8 @@ odoo.define('json_field_widget', function (require) {
                 // If current row is an object, we render next level
                 if (param['is_object']) {
                     this._renderRow(edit, path, deep_level + 1);
+                    //clean path from extra properties
+                    path.pop()
                 }
 
                 // Clean path from key
@@ -227,10 +256,20 @@ odoo.define('json_field_widget', function (require) {
             if (this.schema) {
                 let property = row_schema.properties[param.key];
                 const required_properties = row_schema.required;
+
                 if (required_properties) {
                     param['required'] = required_properties.includes(param.key);
                 }
-                switch (property.type) {
+
+                let type = property.type;
+                // If type array, filter null from types in case we have one type and null
+                // e.g. ["number", "null"] -> filter null so we have just number and
+                // input will have the good number type
+                if (Array.isArray(type)) {
+                    type = type.filter(function (value) { return value != "null"; }).join("")
+                }
+
+                switch (type) {
                     case 'string':
                         param["json_type"] = "text";
                         switch (property.format) {
@@ -428,31 +467,25 @@ odoo.define('json_field_widget', function (require) {
             const path = string_to_path(event.target.getAttribute('path'));
             const json_type = event.target.getAttribute('json-type');
             const key = path.pop();
-            let sub_json;
 
-            const newJson = Object.assign({}, this.value);
-            sub_json = newJson;
-
-            // Loop recurcively over sub_json to create all needed path level
-            for (let i = 0, len = path.length; i < len; i++) {
-                if (sub_json[path[i]] == undefined) {
-                    sub_json[path[i]] = {};
-                }
-                sub_json = sub_json[path[i]];
-            }
 
             let value = event.target.value;
-            window.r = value;
-            // Cast value if json_type is defined
-            switch (json_type) {
-                case "number":
-                    if (value != '') {
+
+            // In case of empty value, we set it to null
+            if (value == '') {
+                value = null;
+            } else {
+                // Cast value if json_type is defined
+                switch (json_type) {
+                    case "number":
                         value = Number(value);
-                    } else {
-                        value = null;
-                    }
-                    break;
+                        break;
+                }
             }
+
+            const newJson = Object.assign({}, this.value);
+            let sub_json = objectGetPath(newJson, path, true)
+
             sub_json[key] = value;
 
             this._setValue(newJson);
