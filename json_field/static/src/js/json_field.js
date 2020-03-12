@@ -74,6 +74,7 @@ odoo.define('json_field_widget', function (require) {
         supportedFieldTypes: ['jsonb'],
         events: _.extend({}, AbstractField.prototype.events, {
             'change .json_value': '_valueChanged',
+            'focusout .json_value': '_valueChanged',
             'change .json_key': '_keyChanged',
             'click .json_add_row': '_addKey',
             'click .json_edit_key': '_editKey',
@@ -468,13 +469,19 @@ odoo.define('json_field_widget', function (require) {
          * @param {Event} event
          */
         _valueChanged: function (event) {
+
+            // Prevent change event on input type date to pass
+            // only focus out must on input type date must pass
+            if (event.type == "change" && event.target.getAttribute('type') == "date") {
+                return
+            }
+
             const path = string_to_path(event.target.getAttribute('path'));
             const json_type = event.target.getAttribute('json-type');
             const key = path.pop();
 
 
             let value = event.target.value;
-
             // In case of empty value, we set it to null
             if (value == '') {
                 value = null;
