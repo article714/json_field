@@ -7,4 +7,5 @@ class Jsonb(fields.Field):
     column_type = ("jsonb", "jsonb")
 
     def convert_to_column(self, value, record, values=None, validate=True):
-        return json.dumps(value)
+        return json.dumps(value) if value else None
+

@@ -156,6 +156,10 @@ odoo.define('json_field_widget', function (require) {
         _renderTable: function (edit) {
             this._updateSchema();
 
+            if (this.value === false) {
+                this.value = {};
+            }
+
             this.$el.empty();
 
             this._renderError()
