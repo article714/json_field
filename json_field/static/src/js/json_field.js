@@ -4,6 +4,7 @@ odoo.define('json_field_widget', function (require) {
     const field_registry = require('web.field_registry');
     const qweb = require('web.core').qweb;
     const time = require('web.time');
+    var dom = require('web.dom');
 
     /**
      * Get recursevely throug object
@@ -73,6 +74,7 @@ odoo.define('json_field_widget', function (require) {
         tagName: 'div',
         supportedFieldTypes: ['jsonb'],
         events: _.extend({}, AbstractField.prototype.events, {
+            'change .json_value_raw': '_valueChangedRaw',
             'change .json_value': '_valueChanged',
             'focusout .json_value': '_valueChanged',
             'change .json_key': '_keyChanged',
@@ -93,19 +95,19 @@ odoo.define('json_field_widget', function (require) {
             }
 
             this.savedValue = '';
+            this.syntaxError = false;
         },
 
         // ========================================================
         // Inherited method
         // ========================================================
 
-
         _renderEdit: function () {
-            this._renderTable(true);
+            this._renderJson(true);
         },
 
         _renderReadonly: function () {
-            this._renderTable(false);
+            this._renderJson(false);
         },
 
         _parseValue: function (value) {
@@ -113,6 +115,11 @@ odoo.define('json_field_widget', function (require) {
         },
 
         isValid: function () {
+            if (this.syntaxError) {
+                this._renderError();
+                return false;
+            }
+
             if (this.ajv_validator != false) {
                 let valid = this.ajv_validator(this.value);
                 if (!valid) {
@@ -154,7 +161,7 @@ odoo.define('json_field_widget', function (require) {
          *
          * @param {boolean} edit Edit mode
          */
-        _renderTable: function (edit) {
+        _renderJson: function (edit) {
             this._updateSchema();
 
             if (this.value === false) {
@@ -164,6 +171,38 @@ odoo.define('json_field_widget', function (require) {
             this.$el.empty();
 
             this._renderError()
+
+            if (this.nodeOptions.raw === true) {
+                this._renderRaw(edit);
+            } else {
+                this._renderTable(edit);
+            }
+
+
+        },
+
+        /**
+         * Rendering field as raw Json
+         *
+         * * @param {boolean} edit
+         */
+        _renderRaw: function (edit) {
+            let $raw = $(qweb.render('JsonFieldRaw', { edit: edit }));
+            $raw.append(JSON.stringify(this.value, undefined, 4));
+
+            if (edit) {
+                dom.autoresize($raw, { parent: this });
+            }
+            this.$el.append($raw);
+        },
+
+
+        /**
+         * Rendering field as guided table
+         *
+         * @param {boolean} edit
+         */
+        _renderTable: function (edit) {
 
             this.$el.append(qweb.render('JsonField', { addEditButton: edit && this.schema == false }));
 
@@ -175,10 +214,25 @@ odoo.define('json_field_widget', function (require) {
          */
         _renderError: function () {
 
-            this.$el.find("#jsonfielderror").remove()
+            this.$el.find("#jsonfielderror_" + this.dataPointID).remove()
 
-            if (this.schema && this.ajv_validator.errors) {
-                this.$el.prepend(qweb.render('JsonFieldErrors', { errors: this.ajv_validator.errors }));
+            if ((this.schema && this.ajv_validator.errors) || this.syntaxError) {
+                let errors;
+                if (this.ajv_validator.errors) {
+                    errors = this.ajv_validator.errors;
+                } else {
+                    errors = [];
+                }
+
+                if (this.syntaxError) {
+                    errors.push(this.syntaxError)
+                }
+                window.a = errors
+                this.$el.prepend(qweb.render('JsonFieldErrors',
+                    {
+                        errors: errors,
+                        id: this.dataPointID
+                    }));
             }
         },
 
@@ -501,6 +555,23 @@ odoo.define('json_field_widget', function (require) {
 
             this._setValue(newJson);
         },
+
+        _valueChangedRaw: function (event) {
+            let value;
+            try {
+                value = JSON.parse(event.target.value);
+                this.syntaxError = false
+            } catch (e) {
+                if (e instanceof SyntaxError) {
+                    this.syntaxError = e;
+                    this._renderError()
+                    return
+                } else {
+                    throw e;
+                }
+            }
+            this._setValue(value);
+        }
 
     });
 
