@@ -18,7 +18,8 @@ class JsonModels(models.AbstractModel):
     """
 
     _auto = True  # automatically create database backend
-    _register = False  # not visible in ORM registry, meant to be python-inherited only
+    _register = False  # not visible in ORM registry, meant to be
+    # python-inherited only
     _abstract = False  # not abstract
     _transient = False  # not transient
 
@@ -45,12 +46,10 @@ class JsonModels(models.AbstractModel):
                 domain = [("active", "=", 1)] + domain
 
         if domain:
-            logging.info("OOOOOOOOOOO 0")
             e = expression.JsonExpression(domain, self)
             tables = e.get_tables()
             where_clause, where_params = e.to_sql()
             where_clause = [where_clause] if where_clause else []
-            logging.info("EEEEEEEEEEEEEEEEEEEE %s, %s", where_clause, where_params)
         else:
             where_clause, where_params, tables = [], [], ['"%s"' % self._table]
 
